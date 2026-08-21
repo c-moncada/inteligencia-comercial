@@ -216,7 +216,10 @@ npm run test:ml
 El repositorio ya trae la configuración lista (`vercel.json` y `api/index.ts`). En Vercel:
 
 1. **Add New → Project** e importa `inteligencia-comercial` desde GitHub.
-2. Deja la configuración como viene y presiona **Deploy**.
+2. **Deja el Root Directory en la raíz del repositorio (`./`).** Si Vercel propone `apps/web` porque detecta un monorepo, cámbialo: desde `apps/web` no se lee `vercel.json` y la API no se publica.
+3. Presiona **Deploy** sin tocar nada más.
+
+Si el proyecto ya existe y el Root Directory quedó mal, se corrige en **Settings → General → Root Directory**, se guarda y se vuelve a desplegar desde **Deployments → Redeploy**.
 
 Qué queda publicado:
 
