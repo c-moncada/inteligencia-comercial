@@ -1,6 +1,7 @@
 {
   "name": "inteligencia-comercial-mvp",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/api",
     "apps/web"
