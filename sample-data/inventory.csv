@@ -1,0 +1,7 @@
+product_id,product_name,current_stock,unit_cost,lead_time_days
+P-001,Producto rentable,80,95,12
+P-002,Producto sobreabastecido,220,170,8
+P-003,Producto con margen bajo,300,100,10
+P-004,Producto por agotarse,20,105,15
+P-005,Producto descontinuado,140,88,10
+P-006,Producto estacional detenido,95,140,20

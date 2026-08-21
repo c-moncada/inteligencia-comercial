@@ -1,0 +1,16 @@
+{
+  "name": "inteligencia-comercial-mvp",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:api": "npm --workspace apps/api run dev",
+    "dev:web": "npm --workspace apps/web run dev",
+    "build": "npm run build --workspaces",
+    "dev:ml": "cd apps/ml && python -m uvicorn app.main:app --reload --port 8000",
+    "test:ml": "cd apps/ml && python -m pytest -q",
+    "test": "npm --workspace apps/api test && npm run test:ml"
+  }
+}

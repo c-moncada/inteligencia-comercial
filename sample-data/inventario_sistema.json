@@ -1,0 +1,46 @@
+{
+  "inventario": [
+    {
+      "codigo": "P-001",
+      "descripcion": "Producto rentable",
+      "existencia": 80,
+      "costo promedio": 95,
+      "dias de reposicion": 12
+    },
+    {
+      "codigo": "P-002",
+      "descripcion": "Producto sobreabastecido",
+      "existencia": 220,
+      "costo promedio": 170,
+      "dias de reposicion": 8
+    },
+    {
+      "codigo": "P-003",
+      "descripcion": "Producto con margen bajo",
+      "existencia": 300,
+      "costo promedio": 100,
+      "dias de reposicion": 10
+    },
+    {
+      "codigo": "P-004",
+      "descripcion": "Producto por agotarse",
+      "existencia": 20,
+      "costo promedio": 105,
+      "dias de reposicion": 15
+    },
+    {
+      "codigo": "P-005",
+      "descripcion": "Producto descontinuado",
+      "existencia": 140,
+      "costo promedio": 88,
+      "dias de reposicion": 10
+    },
+    {
+      "codigo": "P-006",
+      "descripcion": "Producto estacional detenido",
+      "existencia": 95,
+      "costo promedio": 140,
+      "dias de reposicion": 20
+    }
+  ]
+}

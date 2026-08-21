@@ -1,0 +1,7 @@
+fastapi>=0.128,<1
+uvicorn[standard]>=0.35,<1
+pandas>=2.2,<3
+numpy>=2.0,<3
+scikit-learn>=1.7,<2
+pydantic>=2.10,<3
+pytest>=8,<9
