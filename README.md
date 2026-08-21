@@ -1,5 +1,7 @@
 # Inteligencia comercial — MVP 0.4
 
+**Demostración en línea: https://inteligencia-comercial-flame.vercel.app**
+
 Plataforma para transformar ventas e inventario en decisiones financieras priorizadas.
 
 La versión 0.4 elimina el requisito de preparar los archivos. Carga la exportación tal como sale de tu sistema y la plataforma reconoce las columnas, cruza ventas con inventario y responde:
@@ -215,11 +217,13 @@ npm run test:ml
 
 El repositorio ya trae la configuración lista (`vercel.json` y `api/index.ts`). En Vercel:
 
-1. **Add New → Project** e importa `inteligencia-comercial` desde GitHub.
-2. **Deja el Root Directory en la raíz del repositorio (`./`).** Si Vercel propone `apps/web` porque detecta un monorepo, cámbialo: desde `apps/web` no se lee `vercel.json` y la API no se publica.
-3. Presiona **Deploy** sin tocar nada más.
+El proyecto ya está desplegado y cada push a `main` publica una versión nueva. Para crear un despliegue propio, lo más directo es la línea de comandos desde la raíz del repositorio:
 
-Si el proyecto ya existe y el Root Directory quedó mal, se corrige en **Settings → General → Root Directory**, se guarda y se vuelve a desplegar desde **Deployments → Redeploy**.
+```bash
+npx vercel --prod
+```
+
+Si prefieres importarlo desde el panel de Vercel, hay un detalle importante: Vercel detecta Express y propone `apps/api` como **Root Directory**. Hay que dejarlo en la raíz del repositorio (`./`), porque desde `apps/api` no se lee `vercel.json`, el build falla con `No workspaces found` y la interfaz no se publica. Se corrige en **Settings → General → Root Directory**.
 
 Qué queda publicado:
 
