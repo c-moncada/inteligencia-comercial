@@ -211,6 +211,28 @@ Solo el servicio de ML:
 npm run test:ml
 ```
 
+## Desplegar en Vercel
+
+El repositorio ya trae la configuración lista (`vercel.json` y `api/index.ts`). En Vercel:
+
+1. **Add New → Project** e importa `inteligencia-comercial` desde GitHub.
+2. Deja la configuración como viene y presiona **Deploy**.
+
+Qué queda publicado:
+
+| Parte | Cómo se despliega |
+|---|---|
+| Interfaz web | Sitio estático compilado desde `apps/web` |
+| API | Función serverless en `/api`, la misma aplicación de Express |
+| Servicio de machine learning | No se despliega: pandas y scikit-learn no caben cómodamente en una función serverless |
+
+Sin el servicio de Python la plataforma funciona igual, calculando las decisiones con reglas de inventario y marcándolas como tales. Si más adelante publicas el servicio de ML en otro lado (Render, Railway, Fly, una máquina propia), basta con agregar la variable de entorno `ML_SERVICE_URL` en Vercel apuntando a esa dirección para que el modelo vuelva a usarse.
+
+Límites del entorno en línea:
+
+- El plan gratuito de Vercel acepta cargas de hasta 4.5 MB por solicitud. Para archivos más grandes conviene usar la instalación local.
+- La función tiene 60 segundos de tiempo máximo, suficiente para los cálculos por reglas.
+
 ## Actualizar desde la versión 0.3
 
 La versión 0.4 cambia la API y el formato de respuesta, así que conviene actualizar el proyecto completo en vez de reemplazar archivos sueltos. Conserva la carpeta anterior como respaldo y vuelve a ejecutar `npm install`.

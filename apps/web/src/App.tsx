@@ -7,7 +7,10 @@ import type {
   ResultSource,
 } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+// En el despliegue la API vive en el mismo dominio, bajo /api; en desarrollo
+// corre aparte en el puerto 3001.
+const API_URL =
+  import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:3001" : "");
 
 const currency = new Intl.NumberFormat("es-HN", {
   style: "currency",
