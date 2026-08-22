@@ -205,3 +205,47 @@ test("clasifica los tipos de documento más comunes", () => {
   assert.equal(classifyDocument("cualquier cosa"), "unknown");
   assert.equal(classifyDocument(""), "unknown");
 });
+
+test("reconoce el tipo de documento aunque el archivo no traiga encabezados", () => {
+  // a2 exporta a texto "separado por tabuladores sin encabezados ni rayas
+  // separadoras": sin detectar el tipo, la nota de crédito se sumaría.
+  const sinEncabezado = [
+    ["FAC", "000001", "01/03/2026", "CLI-01", "ART-01", "ACEITE VEGETAL 1L", "10", "45,50", "32,00"],
+    ["FAC", "000002", "03/03/2026", "CLI-02", "ART-01", "ACEITE VEGETAL 1L", "6", "45,50", "32,00"],
+    ["N/C", "000003", "08/03/2026", "CLI-01", "ART-01", "ACEITE VEGETAL 1L", "3", "45,50", "32,00"],
+    ["FAC", "000004", "12/03/2026", "CLI-03", "ART-02", "ARROZ BLANCO 5LB", "4", "90,00", "70,00"],
+    ["FAC", "000005", "15/03/2026", "CLI-02", "ART-02", "ARROZ BLANCO 5LB", "7", "90,00", "70,00"],
+  ]
+    .map((row) => row.join("\t"))
+    .join("\n");
+
+  const outcome = ingestFiles([file("ventas.txt", sinEncabezado)]);
+  const report = outcome.report.tables.find((table) => table.role === "sales");
+
+  assert.ok(report);
+  assert.equal(report.headerLine, 0);
+  assert.ok(report.mappings.some((mapping) => mapping.field === "document_type"));
+
+  const aceite = outcome.sales
+    .filter((sale) => sale.product_name === "ACEITE VEGETAL 1L")
+    .reduce((sum, sale) => sum + sale.quantity, 0);
+  assert.equal(aceite, 13);
+});
+
+test("no toma como tipo de documento una columna de categorías sin encabezado", () => {
+  const conCategorias = [
+    ["LIMPIEZA", "01/03/2026", "ART-01", "JABON AZUL 250G", "10", "12,00", "8,00"],
+    ["ABARROTES", "03/03/2026", "ART-02", "ARROZ BLANCO 5LB", "6", "90,00", "70,00"],
+    ["LIMPIEZA", "08/03/2026", "ART-03", "CLORO 1L", "3", "25,00", "18,00"],
+    ["ABARROTES", "12/03/2026", "ART-04", "AZUCAR 2KG", "4", "40,00", "30,00"],
+  ]
+    .map((row) => row.join("\t"))
+    .join("\n");
+
+  const outcome = ingestFiles([file("ventas.txt", conCategorias)]);
+  const report = outcome.report.tables.find((table) => table.role === "sales");
+
+  assert.ok(report);
+  assert.ok(!report.mappings.some((mapping) => mapping.field === "document_type"));
+  assert.equal(outcome.sales.length, 4);
+});

@@ -303,6 +303,41 @@ function assignByContent(
 
   const available = () => free.filter((profile) => !used.has(profile.index));
 
+  // El tipo de documento se busca antes que nada: a2 exporta a texto "sin
+  // encabezados ni rayas separadoras", y sin esta columna una nota de crédito
+  // se suma como venta en vez de restarse. Solo se acepta si los valores son
+  // tipos reconocibles, así que una columna de categorías no la ocupa.
+  if (!byField.has("document_type")) {
+    const candidate = available()
+      .filter((profile) => {
+        const filled = profile.values.filter((value) => value.trim() !== "");
+        if (filled.length < 3) return false;
+
+        // Un tipo de documento tiene un puñado de valores distintos, sin
+        // importar cuántas filas traiga el archivo. La proporción no sirve:
+        // en una muestra de cinco filas dos valores ya son el 40%.
+        const distinct = new Set(filled.map((value) => value.trim().toLowerCase()));
+        if (distinct.size > 12) return false;
+
+        const kinds = [...distinct].map((value) => classifyDocument(value));
+        if (kinds.some((kind) => kind === "unknown")) return false;
+
+        // Si todas las filas son ventas normales, la columna no aporta nada y
+        // se deja libre para otro campo.
+        return kinds.some((kind) => kind !== "sale");
+      })
+      .sort((left, right) => left.uniqueRatio - right.uniqueRatio)[0];
+
+    if (candidate) {
+      take(
+        "document_type",
+        candidate,
+        0.7,
+        "Se detectó por su contenido la columna con el tipo de documento (facturas, devoluciones o movimientos)",
+      );
+    }
+  }
+
   if (!byField.has("sale_date")) {
     const candidate = available()
       .filter((profile) => profile.dateRatio >= 0.75 && profile.filledRatio >= 0.4)

@@ -87,6 +87,18 @@ Una devolución queda siempre como cantidad negativa a precio positivo, venga el
 archivo con la cantidad en negativo, con el importe en negativo o en positivo
 con el tipo `N/C`.
 
+### Exportación sin encabezados
+
+a2 ofrece exportar cualquier reporte "en formato texto separado por tabuladores
+sin encabezados ni rayas separadoras". Ese archivo se lee igual: las columnas se
+deducen por su contenido y el tipo de documento se reconoce por sus valores
+(`FAC`, `N/C`, `E`, `S`, `PRE`…), no por el nombre de la columna. Sin eso una
+nota de crédito se sumaría como venta.
+
+La certeza de cada columna baja —del 97% al 50-70%— y se ve en la pestaña **Tus
+datos**. Si el reporte permite exportar **con** encabezados, conviene usar esa
+opción: el reconocimiento pasa a ser exacto.
+
 ### Movimientos de almacén
 
 Una exportación de movimientos registra qué salió y a qué costo, pero no el
