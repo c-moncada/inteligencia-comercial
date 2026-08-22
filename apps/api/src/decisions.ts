@@ -18,7 +18,12 @@ function round(value: number, decimals = 2): number {
 }
 
 function money(value: number): string {
-  return round(value).toLocaleString("es-HN", { maximumFractionDigits: 2 });
+  return Math.round(value).toLocaleString("es-HN", { maximumFractionDigits: 0 });
+}
+
+/** Unidades y días se leen mejor sin decimales y con separador de miles. */
+function count(value: number): string {
+  return Math.round(value).toLocaleString("es-HN", { maximumFractionDigits: 0 });
 }
 
 function restockPriority(forecast: ProductForecast): "high" | "medium" | "low" {
@@ -153,7 +158,9 @@ export function buildBusinessDecisions(
       reasons.push("La demanda viene cayendo: conviene comprar con prudencia.");
     }
     if (!usingModel) {
-      reasons.push("Cálculo con reglas de inventario, sin modelo de demanda entrenado.");
+      reasons.push(
+        "La demanda se estimó con el promedio de venta del período: conviene contrastarla con lo que sabes de la temporada.",
+      );
     }
 
     const returnText =
@@ -173,7 +180,7 @@ export function buildBusinessDecisions(
       productId: forecast.product_id,
       productName: forecast.product_name,
       title: `Reponer ${forecast.product_name}`,
-      explanation: `Se esperan aproximadamente ${round(forecast.forecast_30_days)} unidades de demanda durante los próximos 30 días, dentro de un rango probable de ${round(forecast.forecast_min_30_days)} a ${round(forecast.forecast_max_30_days)}. ${deadlineText(forecast.decision_deadline_days)} ${returnText}`,
+      explanation: `Se esperan alrededor de ${count(forecast.forecast_30_days)} unidades de demanda en los próximos 30 días, dentro de un rango probable de ${count(forecast.forecast_min_30_days)} a ${count(forecast.forecast_max_30_days)}. ${deadlineText(forecast.decision_deadline_days)} ${returnText}`,
       recommendedAction: `Evaluar la compra de ${forecast.suggested_purchase} unidades. Confirmar pedidos pendientes, capacidad de almacenamiento y efectivo antes de emitir la orden.`,
       impactLabel: "Ganancia protegida",
       impactAmount: round(forecast.profit_at_risk),
@@ -263,7 +270,7 @@ export function buildBusinessDecisions(
         confidence: "high",
         source: "rules",
         reasons: [
-          `El inventario cubre ${product.coverageDays ?? 0} días de venta.`,
+          `El inventario cubre ${count(product.coverageDays ?? 0)} días de venta.`,
           product.trend === "cayendo"
             ? "La demanda viene cayendo, por lo que la cobertura real podría ser mayor."
             : "La cobertura supera el objetivo de 90 días.",
@@ -273,7 +280,7 @@ export function buildBusinessDecisions(
         productId: product.productId,
         productName: product.productName,
         title: `Pausar compras de ${product.productName}`,
-        explanation: `El inventario actual cubre aproximadamente ${product.coverageDays ?? 0} días de venta. Se estiman L ${money(product.trappedCapital)} invertidos por encima de una cobertura objetivo de 90 días.`,
+        explanation: `El inventario actual cubre alrededor de ${count(product.coverageDays ?? 0)} días de venta. Se estiman L ${money(product.trappedCapital)} invertidos por encima de una cobertura objetivo de 90 días.`,
         recommendedAction:
           "Suspender nuevas compras, revisar pedidos abiertos y evaluar promoción, redistribución o devolución al proveedor.",
         impactLabel: "Capital para liberar",

@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { analyzeBusinessData } from "./analyze.js";
+import { buildBusinessOverview } from "./business.js";
 import { buildBusinessDecisions, mergeForecastIntoProducts } from "./decisions.js";
 import { demoFiles } from "./demo.js";
 import type { IngestOutcome, SourceFile } from "./ingest/index.js";
@@ -8,7 +9,7 @@ import { IngestError, ingestFiles } from "./ingest/index.js";
 import { requestDemandForecast } from "./ml.js";
 import type { AnalysisResult, DemandForecastResult } from "./types.js";
 
-export const VERSION = "0.4.0";
+export const VERSION = "0.5.0";
 
 function forecastWithoutDates(reason: string): DemandForecastResult {
   return {
@@ -41,8 +42,16 @@ async function analyzeDataset(outcome: IngestOutcome): Promise<AnalysisResult> {
 
   const merged = mergeForecastIntoProducts(financial, forecast);
   const { decisions, summary: decisionSummary } = buildBusinessDecisions(merged, forecast);
+  const overview = buildBusinessOverview(merged, outcome.sales, outcome.datesDetected);
 
-  return { ...merged, forecast, decisions, decisionSummary, ingest: outcome.report };
+  return {
+    ...merged,
+    forecast,
+    decisions,
+    decisionSummary,
+    ingest: outcome.report,
+    overview,
+  };
 }
 
 function filesFromRequest(request: express.Request): SourceFile[] {
@@ -131,9 +140,11 @@ export function createApp(): express.Express {
     response.json({ ok: true, version: VERSION });
   });
 
-  app.get("/api/analysis/demo", async (_request, response) => {
+  app.get("/api/analysis/demo", async (request, response) => {
     try {
-      const outcome = ingestFiles(demoFiles());
+      const outcome = ingestFiles(demoFiles(), {
+        defaultLeadTimeDays: Number(request.query.leadTime ?? 7) || 7,
+      });
       response.json(await analyzeDataset(outcome));
     } catch (error) {
       handleError(response, error);

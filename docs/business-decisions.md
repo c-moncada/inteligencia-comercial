@@ -1,4 +1,4 @@
-# Motor de decisiones financieras — versión 0.4
+# Motor de decisiones financieras — versión 0.5
 
 ## Flujo
 

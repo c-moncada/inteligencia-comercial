@@ -288,4 +288,113 @@ export interface AnalysisResult extends FinancialAnalysisResult {
   decisions: BusinessDecision[];
   decisionSummary: DecisionSummary;
   ingest: IngestReport;
+  /** Lectura del negocio: salud, listas destacadas y evolución de las ventas. */
+  overview: BusinessOverview;
+}
+
+/** Métrica que ordena un ranking, para que la interfaz sepa cómo nombrarla. */
+export type RankingMetric =
+  | "turns_per_year"
+  | "units_per_day"
+  | "margin_percent"
+  | "gross_profit"
+  | "idle_capital";
+
+export type RankingId = "fast_moving" | "high_margin" | "slow_moving" | "top_profit";
+
+/** Un producto dentro de una lista destacada, con el contexto para entenderlo. */
+export interface RankedProduct {
+  productId: string;
+  productName: string;
+  /** Valor de la métrica que ordena la lista. */
+  value: number;
+  /** Valor principal ya escrito para mostrarse. */
+  valueLabel: string;
+  /** Frase corta que explica por qué el producto está en la lista. */
+  detail: string;
+  unitsSold: number;
+  revenue: number;
+  grossProfit: number;
+  marginPercent: number;
+  currentStock: number;
+  inventoryValue: number;
+  coverageDays: number | null;
+  daysSinceLastSale: number | null;
+  /** Veces que el inventario se vendería en un año al ritmo actual. */
+  turnsPerYear: number | null;
+  /** Porcentaje de lo disponible que ya se vendió en el período. */
+  sellThroughPercent: number | null;
+  abcClass: "A" | "B" | "C";
+  trend: ProductAnalysis["trend"];
+}
+
+export interface ProductRanking {
+  id: RankingId;
+  title: string;
+  /** La pregunta de negocio que responde la lista. */
+  question: string;
+  metric: RankingMetric;
+  metricLabel: string;
+  /** Cómo se ordenó, en lenguaje del negocio. */
+  note: string;
+  /** Qué mostrar cuando no hay productos que cumplan el criterio. */
+  emptyMessage: string;
+  items: RankedProduct[];
+}
+
+export interface TimelinePoint {
+  /** Fecha ISO del inicio del tramo. */
+  date: string;
+  label: string;
+  revenue: number;
+  grossProfit: number;
+  units: number;
+}
+
+export interface SalesTimeline {
+  granularity: "day" | "week" | "month";
+  granularityLabel: string;
+  points: TimelinePoint[];
+}
+
+/** Reparto del inventario entre lo que rota, lo que sobra y lo detenido. */
+export interface InventoryBreakdown {
+  healthy: number;
+  excess: number;
+  dead: number;
+  total: number;
+}
+
+export type HealthLevel = "good" | "watch" | "risk";
+
+export interface HealthPoint {
+  id: string;
+  label: string;
+  value: string;
+  level: HealthLevel;
+  message: string;
+}
+
+export interface BusinessHealth {
+  /** Puntaje de 0 a 100 con los indicadores que sí pudieron calcularse. */
+  score: number;
+  level: HealthLevel;
+  headline: string;
+  summary: string;
+  points: HealthPoint[];
+}
+
+export interface BusinessOverview {
+  health: BusinessHealth;
+  /** Frases en lenguaje llano sobre el período analizado. */
+  highlights: string[];
+  inventoryBreakdown: InventoryBreakdown;
+  timeline: SalesTimeline;
+  rankings: ProductRanking[];
+  /** Productos que se vendieron y hoy están en cero. */
+  outOfStockCount: number;
+  /** Rotación anual del inventario completo, cuando puede calcularse. */
+  inventoryTurnsPerYear: number | null;
+  /** Productos que concentran el 80% de la ganancia bruta. */
+  productsDrivingProfit: number;
 }

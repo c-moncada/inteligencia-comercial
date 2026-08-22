@@ -7,11 +7,14 @@
     "apps/web"
   ],
   "scripts": {
+    "dev": "node scripts/dev.mjs",
     "dev:api": "npm --workspace apps/api run dev",
     "dev:web": "npm --workspace apps/web run dev",
+    "dev:ml": "node scripts/ml.mjs serve",
     "build": "npm run build --workspaces",
-    "dev:ml": "cd apps/ml && python -m uvicorn app.main:app --reload --port 8000",
-    "test:ml": "cd apps/ml && python -m pytest -q",
-    "test": "npm --workspace apps/api test && npm run test:ml"
+    "build:web": "npm run build --prefix apps/web",
+    "test": "npm --workspace apps/api test && npm run test:ml",
+    "test:api": "npm --workspace apps/api test",
+    "test:ml": "node scripts/ml.mjs test"
   }
 }

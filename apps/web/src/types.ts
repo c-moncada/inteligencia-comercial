@@ -218,6 +218,96 @@ export interface IngestReport {
   errors: string[];
 }
 
+export type RankingMetric =
+  | "turns_per_year"
+  | "units_per_day"
+  | "margin_percent"
+  | "gross_profit"
+  | "idle_capital";
+
+export type RankingId = "fast_moving" | "high_margin" | "slow_moving" | "top_profit";
+
+export interface RankedProduct {
+  productId: string;
+  productName: string;
+  value: number;
+  valueLabel: string;
+  detail: string;
+  unitsSold: number;
+  revenue: number;
+  grossProfit: number;
+  marginPercent: number;
+  currentStock: number;
+  inventoryValue: number;
+  coverageDays: number | null;
+  daysSinceLastSale: number | null;
+  turnsPerYear: number | null;
+  sellThroughPercent: number | null;
+  abcClass: "A" | "B" | "C";
+  trend: ProductAnalysis["trend"];
+}
+
+export interface ProductRanking {
+  id: RankingId;
+  title: string;
+  question: string;
+  metric: RankingMetric;
+  metricLabel: string;
+  note: string;
+  emptyMessage: string;
+  items: RankedProduct[];
+}
+
+export interface TimelinePoint {
+  date: string;
+  label: string;
+  revenue: number;
+  grossProfit: number;
+  units: number;
+}
+
+export interface SalesTimeline {
+  granularity: "day" | "week" | "month";
+  granularityLabel: string;
+  points: TimelinePoint[];
+}
+
+export interface InventoryBreakdown {
+  healthy: number;
+  excess: number;
+  dead: number;
+  total: number;
+}
+
+export type HealthLevel = "good" | "watch" | "risk";
+
+export interface HealthPoint {
+  id: string;
+  label: string;
+  value: string;
+  level: HealthLevel;
+  message: string;
+}
+
+export interface BusinessHealth {
+  score: number;
+  level: HealthLevel;
+  headline: string;
+  summary: string;
+  points: HealthPoint[];
+}
+
+export interface BusinessOverview {
+  health: BusinessHealth;
+  highlights: string[];
+  inventoryBreakdown: InventoryBreakdown;
+  timeline: SalesTimeline;
+  rankings: ProductRanking[];
+  outOfStockCount: number;
+  inventoryTurnsPerYear: number | null;
+  productsDrivingProfit: number;
+}
+
 export interface AnalysisResult {
   period: { from: string; to: string; days: number; assumed: boolean };
   summary: {
@@ -239,4 +329,5 @@ export interface AnalysisResult {
   decisions: BusinessDecision[];
   decisionSummary: DecisionSummary;
   ingest: IngestReport;
+  overview: BusinessOverview;
 }

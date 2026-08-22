@@ -1,46 +1,91 @@
-# Inteligencia comercial — MVP 0.4
+# Inteligencia comercial — 0.5
 
 **Demostración en línea: https://inteligencia-comercial-flame.vercel.app**
 
-Plataforma para transformar ventas e inventario en decisiones financieras priorizadas.
+Carga las exportaciones de ventas e inventario tal como salen de tu sistema y
+obtén una lectura del negocio: cuánto ganas de verdad, dónde está detenido tu
+dinero, qué productos mandan y qué conviene hacer primero.
 
-La versión 0.4 elimina el requisito de preparar los archivos. Carga la exportación tal como sale de tu sistema y la plataforma reconoce las columnas, cruza ventas con inventario y responde:
+## Qué vas a ver
 
-- Qué producto debe reponerse, cuántas unidades y cuánto dinero requiere.
-- Cuánta ganancia puede protegerse y cuándo debe tomarse la decisión.
-- Qué compras deben pausarse por exceso de inventario.
-- Qué inventario dejó de rotar y cuánto capital tiene inmovilizado.
-- Qué margen debería revisarse.
+La versión 0.5 reorganiza toda la interfaz alrededor de las preguntas que se hace
+quien maneja el negocio, no alrededor de cómo se calculó cada número.
 
-## Novedades de la versión 0.4
+### Resumen
 
-### 1. Acepta cualquier entrada
+- **Cómo va tu negocio**, con un puntaje de 0 a 100 y la razón detrás: margen,
+  dinero detenido, rotación del inventario y ganancia expuesta por agotamiento.
+- **Lo que conviene saber**, en frases normales: *"Tu inventario vale L 102,720 al
+  costo. De ese total, L 59,998 está en productos que no se mueven al ritmo
+  esperado."*
+- **Evolución de las ventas y la ganancia** en el tiempo, por día, semana o mes
+  según el largo del período.
+- **En qué está tu inventario**: cuánto se mueve, cuánto sobra y cuánto lleva
+  meses parado.
+- **Cuatro listas de productos**, ordenadas por lo que importa:
 
-Un solo punto de carga acepta varios archivos a la vez, en cualquier orden y formato:
+| Lista | Responde |
+|---|---|
+| Mayor rotación | ¿Qué se vende más rápido de lo que se repone? |
+| Mayor margen de ganancia | ¿Qué deja más ganancia por cada venta? |
+| Baja rotación | ¿Dónde está el dinero que no se mueve? |
+| Los que más ganancia dejan | ¿De qué productos vive realmente el negocio? |
+
+Cada producto de las listas se puede tocar para verlo en el detalle completo, y
+cada lista explica cómo se ordenó.
+
+### Qué hacer
+
+El plan de acción, ordenado por el dinero en juego: qué comprar y cuánto, qué
+dejar de comprar, qué liquidar y qué margen revisar. Se puede filtrar por tipo de
+acción, ver solo lo urgente, marcar cada punto como resuelto, descargar el plan
+en CSV para llevarlo a una reunión o imprimirlo.
+
+### Productos
+
+Tabla completa con búsqueda, filtros y ordenamiento por cualquier columna, con el
+estado de cada producto: *hay que reponer*, *sin existencia*, *de más*,
+*detenido* o *en orden*. También se descarga en CSV.
+
+### Tus datos
+
+Qué archivo se usó para qué, qué columna se interpretó como qué campo y con
+cuánta certeza, qué filas se descartaron y por qué, cómo se estimó la demanda y
+qué supuestos se aplicaron. Todo lo técnico vive aquí y no estorba mientras miras
+tus números.
+
+## Acepta cualquier entrada
+
+Un solo punto de carga acepta varios archivos a la vez, en cualquier orden y
+formato:
 
 | Entrada | Ejemplos que ya funcionan |
 |---|---|
 | CSV, TXT, TSV | Coma, punto y coma, tabulador, barra vertical o columnas alineadas |
 | Excel | `.xlsx` y `.xlsm`, todas las hojas, fechas guardadas como número de serie |
 | JSON | Lista de objetos, objeto con listas, matriz con encabezados o NDJSON |
-| HTML y XML | Archivos `.xls` que en realidad son tablas HTML, exportaciones XML, Excel 2003 |
+| HTML y XML | Archivos `.xls` que en realidad son tablas HTML, exportaciones XML |
 | Texto pegado | Copiar y pegar directamente en la interfaz |
 
-También reconoce exportaciones de varias tablas relacionadas: si cargas ventas, existencias y catálogo de productos por separado, identifica el papel de cada una y las cruza por el código de producto. El costo puede venir solo en el catálogo (`precio_compra`) y aun así el margen se calcula bien.
+También reconoce exportaciones de varias tablas relacionadas: si cargas ventas,
+existencias y catálogo por separado, identifica el papel de cada una y las cruza
+por el código de producto.
 
 La lectura resuelve por su cuenta:
 
 - Codificación UTF-8, UTF-16 o Windows-1252 (acentos y ñ).
 - Membretes, filas vacías y totales al final del reporte.
 - Archivos sin fila de encabezados: las columnas se deducen por su contenido.
-- Nombres de columna en español o inglés: `FC_CODIGO`, `Cantidad`, `Existencia actual`, `qty`, `on hand`.
+- Nombres de columna en español o inglés: `FC_CODIGO`, `Cantidad`,
+  `Existencia actual`, `qty`, `on hand`.
 - Números como `1,234.56`, `1.234,56`, `L 1,234.56`, `(450)` o `12%`.
-- Columnas ambiguas: `cantidad` es existencia en un archivo de inventario y unidades vendidas en uno de ventas; `fecha_vencimiento` no se confunde con la fecha de venta; el `id` correlativo de la base de datos no se confunde con el código del producto.
+- Columnas ambiguas: `cantidad` es existencia en un archivo de inventario y
+  unidades vendidas en uno de ventas; `fecha_vencimiento` no se confunde con la
+  fecha de venta; el `id` correlativo de la base de datos no se confunde con el
+  código del producto.
 - Fechas como `01/03/2026`, `2026-03-01`, `20260301` o `1 de marzo de 2026`.
 
-Cada análisis muestra un reporte de lectura: qué archivo se usó para qué, qué columna se interpretó como qué campo, con cuánta certeza, qué filas se descartaron y por qué.
-
-### 2. Funciona con datos incompletos
+## Funciona con datos incompletos
 
 | Falta | Qué hace la plataforma |
 |---|---|
@@ -48,62 +93,18 @@ Cada análisis muestra un reporte de lectura: qué archivo se usó para qué, qu
 | El precio unitario | Lo calcula desde el importe de la línea |
 | El costo | Lo busca en el costo total, el margen, el inventario u otras ventas |
 | El costo en todas las fuentes | Asume margen cero y lo advierte, en vez de inventar ganancias |
-| Los días de reposición | Asume 7 días y lo informa |
+| Los días de reposición | Usa el valor que indiques en la pantalla de carga |
 | El archivo de inventario | Asume existencia cero y advierte que la compra sugerida es un máximo teórico |
 | Las fechas de venta | Analiza el archivo como el total de un período de 30 días |
-
-### 3. Análisis más inteligente
-
-- **Inventario sin rotación:** productos con existencia y sin ventas recientes, con el capital que tienen detenido. Los productos que están en el inventario pero nunca en las ventas ya no quedan invisibles.
-- **Clasificación ABC:** qué productos concentran la ganancia y cuáles aportan poco.
-- **Tendencia de la demanda:** comparación entre la segunda y la primera mitad del período. Una reposición urgente baja de prioridad si la demanda viene cayendo.
-- **Motivos explícitos:** cada decisión lista por qué tiene la prioridad que tiene.
-
-### 4. Pronóstico graduado según el historial
-
-| Historial | Método |
-|---|---|
-| Menos de 21 días | Promedio del período |
-| 21 a 119 días | Promedio móvil ponderado con tendencia amortiguada, evaluado desde 60 días |
-| 120 días o más | Modelo entrenado, comparado contra el promedio histórico y contra la mezcla de ambos |
-
-Ya no se responde "datos insuficientes" y se detiene: siempre hay una estimación con el método indicado.
-
-### 5. Sigue funcionando sin el servicio de machine learning
-
-Si el servicio de Python no está disponible, la API calcula las decisiones con reglas de inventario y las marca como tales. La plataforma nunca se queda sin responder.
-
-## Etiquetas de origen de resultados
-
-Cada indicador muestra de dónde proviene:
-
-- **Usa machine learning:** estimación generada por el modelo con el historial de ventas.
-- **No usa ML:** cálculo exacto, dato observado o regla financiera.
-- **ML + reglas:** combina el pronóstico con inventario, costo, margen o tiempo de reposición.
-- **No usa ML · promedio:** el sistema seleccionó el promedio histórico porque superó o sustituyó al modelo.
-
-## Arquitectura
-
-```text
-React + TypeScript
-        ↓
-Express + TypeScript
-        ↓
-Lectura universal de archivos  →  Motor de decisiones financieras
-        ↓
-FastAPI + pandas + scikit-learn
-```
-
-La lectura de archivos no usa dependencias externas: el lector de Excel descomprime el `.xlsx` con la biblioteca `zlib` incluida en Node.
 
 ## Requisitos
 
 - Node.js y npm.
-- Python 3.11 o superior.
+- Python 3.11 o superior, **opcional**: solo afina el pronóstico de demanda. Sin
+  Python la plataforma entrega el análisis completo estimando la demanda con el
+  promedio de ventas del período.
 
 ## Instalación
-
-### Dependencias web y API
 
 Desde la raíz:
 
@@ -111,19 +112,7 @@ Desde la raíz:
 npm install
 ```
 
-### Dependencias de machine learning
-
-En CMD de Windows:
-
-```cmd
-cd apps\ml
-python -m venv .venv
-.venv\Scripts\activate.bat
-python -m pip install -r requirements.txt
-cd ..\..
-```
-
-En PowerShell:
+Eso deja lista la interfaz y la API. Para agregar el servicio de pronóstico:
 
 ```powershell
 cd apps/ml
@@ -133,37 +122,26 @@ python -m pip install -r requirements.txt
 cd ../..
 ```
 
-No copies el `.venv` de otra computadora. Créalo localmente.
+En CMD de Windows la línea de activación es `.venv\Scripts\activate.bat`. No
+copies el `.venv` de otra computadora: créalo localmente.
 
 ## Ejecutar
 
-Usa tres terminales desde la raíz.
-
-### Terminal 1: machine learning
+Un solo comando desde la raíz:
 
 ```bash
-npm run dev:ml
+npm run dev
 ```
 
-Disponible en `http://localhost:8000`. Es opcional: sin este servicio la plataforma sigue entregando decisiones calculadas con reglas.
+Levanta la API en `http://localhost:3001`, la interfaz en
+`http://localhost:5173` y, si el entorno de Python está instalado, el servicio de
+pronóstico en `http://localhost:8000`. Si no lo está, lo dice y sigue adelante.
 
-### Terminal 2: API
+Para levantar cada parte por separado están `npm run dev:api`, `npm run dev:web`
+y `npm run dev:ml`.
 
-```bash
-npm run dev:api
-```
-
-Disponible en `http://localhost:3001`.
-
-### Terminal 3: interfaz web
-
-```bash
-npm run dev:web
-```
-
-Abre la dirección que muestre Vite, normalmente `http://localhost:5173`.
-
-Presiona **Ver demostración** o arrastra tus propios archivos. Para probar la lectura automática hay ejemplos desordenados a propósito en `sample-data`:
+Abre `http://localhost:5173`, presiona **Ver una demostración** o arrastra tus
+archivos. En `sample-data` hay ejemplos desordenados a propósito:
 
 - `ventas_sistema.csv`: membrete, punto y coma, fechas `dd/mm/aaaa` y montos con `L`.
 - `inventario_sistema.xlsx`: hoja de Excel.
@@ -191,23 +169,26 @@ Ejemplo con varios archivos:
 curl -X POST http://localhost:3001/api/analysis/ingest -F "files=@ventas.xlsx" -F "files=@existencias.csv"
 ```
 
-Parámetros opcionales de consulta: `leadTime` (días de reposición asumidos) y `periodDays` (período asumido cuando no hay fechas).
+Parámetros opcionales de consulta: `leadTime` (días de reposición asumidos) y
+`periodDays` (período asumido cuando no hay fechas).
+
+La respuesta incluye `overview` con el puntaje de salud, las listas de productos,
+la composición del inventario y la evolución de las ventas; `decisions` con el
+plan de acción; `products` con el detalle; e `ingest` con el reporte de lectura.
 
 ## Pruebas
-
-Todo:
 
 ```bash
 npm test
 ```
 
-Solo la API (lectura de archivos, análisis y decisiones):
+Solo la API (lectura de archivos, análisis, decisiones y panel de negocio):
 
 ```bash
-npm --workspace apps/api test
+npm run test:api
 ```
 
-Solo el servicio de ML:
+Solo el servicio de pronóstico:
 
 ```bash
 npm run test:ml
@@ -215,15 +196,18 @@ npm run test:ml
 
 ## Desplegar en Vercel
 
-El repositorio ya trae la configuración lista (`vercel.json` y `api/index.ts`). En Vercel:
-
-El proyecto ya está desplegado y cada push a `main` publica una versión nueva. Para crear un despliegue propio, lo más directo es la línea de comandos desde la raíz del repositorio:
+El repositorio ya trae la configuración lista (`vercel.json` y `api/index.ts`).
+Desde la raíz:
 
 ```bash
 npx vercel --prod
 ```
 
-Si prefieres importarlo desde el panel de Vercel, hay un detalle importante: Vercel detecta Express y propone `apps/api` como **Root Directory**. Hay que dejarlo en la raíz del repositorio (`./`), porque desde `apps/api` no se lee `vercel.json`, el build falla con `No workspaces found` y la interfaz no se publica. Se corrige en **Settings → General → Root Directory**.
+Si prefieres importarlo desde el panel de Vercel, hay un detalle importante:
+Vercel detecta Express y propone `apps/api` como **Root Directory**. Hay que
+dejarlo en la raíz del repositorio (`./`), porque desde `apps/api` no se lee
+`vercel.json`, el build falla con `No workspaces found` y la interfaz no se
+publica. Se corrige en **Settings → General → Root Directory**.
 
 Qué queda publicado:
 
@@ -231,36 +215,35 @@ Qué queda publicado:
 |---|---|
 | Interfaz web | Sitio estático compilado desde `apps/web` |
 | API | Función serverless en `/api`, la misma aplicación de Express |
-| Servicio de machine learning | No se despliega: pandas y scikit-learn no caben cómodamente en una función serverless |
+| Servicio de pronóstico | No se despliega: pandas y scikit-learn no caben cómodamente en una función serverless |
 
-Sin el servicio de Python la plataforma funciona igual, calculando las decisiones con reglas de inventario y marcándolas como tales. Si más adelante publicas el servicio de ML en otro lado (Render, Railway, Fly, una máquina propia), basta con agregar la variable de entorno `ML_SERVICE_URL` en Vercel apuntando a esa dirección para que el modelo vuelva a usarse.
+Sin el servicio de Python la plataforma funciona igual: estima la demanda con el
+promedio de ventas del período y lo indica en la pestaña **Tus datos**. Si más
+adelante lo publicas en otro lado (Render, Railway, Fly, una máquina propia),
+basta con agregar la variable de entorno `ML_SERVICE_URL` en Vercel apuntando a
+esa dirección.
 
 Límites del entorno en línea:
 
-- El plan gratuito de Vercel acepta cargas de hasta 4.5 MB por solicitud. Para archivos más grandes conviene usar la instalación local.
-- La función tiene 60 segundos de tiempo máximo, suficiente para los cálculos por reglas.
-
-## Actualizar desde la versión 0.3
-
-La versión 0.4 cambia la API y el formato de respuesta, así que conviene actualizar el proyecto completo en vez de reemplazar archivos sueltos. Conserva la carpeta anterior como respaldo y vuelve a ejecutar `npm install`.
+- El plan gratuito de Vercel acepta cargas de hasta 4.5 MB por solicitud. La
+  interfaz avisa antes de intentarlo; para archivos más grandes conviene usar la
+  instalación local.
+- La función tiene 60 segundos de tiempo máximo, suficiente para los cálculos.
 
 ## Advertencias financieras
 
-Las cifras son estimaciones de apoyo, no órdenes automáticas de compra. Antes de actuar deben considerarse:
+Las cifras son estimaciones de apoyo, no órdenes automáticas de compra. Antes de
+actuar deben considerarse pedidos pendientes de recibir, cantidades mínimas del
+proveedor, descuentos por volumen, impuestos, flete y comisiones, capacidad de
+almacenamiento, capital disponible, productos sustitutos y cambios de precio o
+promociones futuras.
 
-- Pedidos pendientes de recibir.
-- Cantidades mínimas del proveedor.
-- Descuentos por volumen.
-- Impuestos, flete y comisiones.
-- Capacidad de almacenamiento.
-- Capital disponible.
-- Productos sustitutos.
-- Cambios de precio o promociones futuras.
+Cuando la plataforma asume un dato que faltaba, lo dice en la pestaña **Tus
+datos**. Revisa esas advertencias antes de usar las cifras.
 
-Cuando la plataforma asume un dato que faltaba, lo dice en el reporte de lectura. Revisa esas advertencias antes de usar las cifras.
+## Documentación
 
-Consulta:
-
-- [Entrada de datos](docs/canonical-format.md)
-- [Modelo de machine learning](docs/machine-learning.md)
-- [Motor de decisiones](docs/business-decisions.md)
+- [Panel de negocio](docs/panel-de-negocio.md): salud, listas de productos y rotación.
+- [Motor de decisiones](docs/business-decisions.md): cómo se calcula cada acción.
+- [Entrada de datos](docs/canonical-format.md): qué columnas se reconocen.
+- [Pronóstico de demanda](docs/machine-learning.md): el modelo opcional.

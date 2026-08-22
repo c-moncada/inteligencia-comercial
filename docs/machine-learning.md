@@ -1,4 +1,7 @@
-# Modelo de machine learning — versión 0.4
+# Pronóstico de demanda — versión 0.5
+
+> Servicio opcional. Sin él la plataforma estima la demanda con el promedio de
+> ventas del período y lo indica en la pestaña **Tus datos**.
 
 ## Objetivo
 
