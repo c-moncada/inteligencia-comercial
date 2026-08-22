@@ -14,6 +14,7 @@ import type {
 import type { CatalogRow } from "./build.js";
 import { buildCatalogRows, buildInventoryRows, buildSalesRows } from "./build.js";
 import { fieldLabel } from "./fields.js";
+import { appendAll, maxOf } from "../numbers.js";
 import type { TableMapping } from "./mapping.js";
 import { mapTable } from "./mapping.js";
 import type { SourceFile } from "./read.js";
@@ -161,12 +162,17 @@ function mergeInventory(rows: InventoryRow[], keys: ProductKeys): InventoryRow[]
       product_name: keys.bestName(productId),
       current_stock: stock,
       unit_cost: unitCost,
-      lead_time_days: Math.max(...group.map((row) => row.lead_time_days)),
+      lead_time_days: maxOf(group.map((row) => row.lead_time_days)),
       unit_price: prices.length > 0 ? prices.reduce((sum, price) => sum + price, 0) / prices.length : undefined,
     });
   }
 
   return merged;
+}
+
+/** Concordancia de número: "1 producto" y no "1 productos". */
+function count(total: number, singular: string, plural: string): string {
+  return `${total} ${total === 1 ? singular : plural}`;
 }
 
 function averageCostFromSales(sales: SaleRow[]): Map<string, number> {
@@ -193,6 +199,7 @@ function averagePriceFromSales(sales: SaleRow[]): Map<string, number> {
   const totals = new Map<string, { revenue: number; units: number }>();
 
   for (const sale of sales) {
+    if (!Number.isFinite(sale.unit_price)) continue;
     const units = Math.max(sale.quantity, 0);
     if (units <= 0) continue;
     const current = totals.get(sale.product_id) ?? { revenue: 0, units: 0 };
@@ -224,7 +231,7 @@ export function ingestFiles(files: SourceFile[], options: IngestOptions = {}): I
   const warnings: string[] = [];
   const notes: string[] = [];
 
-  const salesRows: SaleRow[] = [];
+  let salesRows: SaleRow[] = [];
   const inventoryRows: InventoryRow[] = [];
   const catalogRows: CatalogRow[] = [];
   const keys = new ProductKeys();
@@ -280,7 +287,7 @@ export function ingestFiles(files: SourceFile[], options: IngestOptions = {}): I
 
       if (mapping.role === "catalog") {
         const built = buildCatalogRows(table, mapping);
-        catalogRows.push(...built.rows);
+        appendAll(catalogRows, built.rows);
         rowsUsed = built.rowsUsed;
         rowsDiscarded = built.rowsDiscarded;
         localIssues.push(...built.issues);
@@ -291,7 +298,7 @@ export function ingestFiles(files: SourceFile[], options: IngestOptions = {}): I
         const built = buildInventoryRows(table, mapping, {
           defaultLeadTimeDays: defaultLeadTime,
         });
-        inventoryRows.push(...built.rows);
+        appendAll(inventoryRows, built.rows);
         if (mapping.role === "inventory") {
           rowsUsed = Math.max(rowsUsed, built.rowsUsed);
           rowsDiscarded = Math.max(rowsDiscarded, built.rowsDiscarded);
@@ -345,6 +352,56 @@ export function ingestFiles(files: SourceFile[], options: IngestOptions = {}): I
   for (const row of catalogRows) {
     const productId = keys.resolve(row.product_id, row.product_name);
     catalogById.set(productId, { ...row, product_id: productId });
+  }
+
+  // Precio de venta para las líneas que no lo traen. Es el caso de las
+  // exportaciones de movimientos de almacén: registran qué salió y a qué costo,
+  // pero el precio vive en el maestro de artículos.
+  const referencePrice = new Map<string, number>();
+  for (const row of inventory) {
+    if (typeof row.unit_price === "number" && Number.isFinite(row.unit_price) && row.unit_price > 0) {
+      referencePrice.set(row.product_id, row.unit_price);
+    }
+  }
+  for (const [productId, row] of catalogById) {
+    if (referencePrice.has(productId)) continue;
+    if (row.unit_price !== null && Number.isFinite(row.unit_price) && row.unit_price > 0) {
+      referencePrice.set(productId, row.unit_price);
+    }
+  }
+
+  let pricedFromReference = 0;
+  for (const sale of salesRows) {
+    if (Number.isFinite(sale.unit_price)) continue;
+    const price = referencePrice.get(sale.product_id);
+    if (price === undefined) continue;
+    sale.unit_price = price;
+    pricedFromReference += 1;
+  }
+
+  const unpriced = salesRows.filter((sale) => !Number.isFinite(sale.unit_price));
+  if (unpriced.length > 0) {
+    const unpricedProducts = new Set(unpriced.map((sale) => sale.product_id));
+    salesRows = salesRows.filter((sale) => Number.isFinite(sale.unit_price));
+
+    if (salesRows.length === 0) {
+      throw new IngestError(
+        "Las líneas de venta no traen precio y no se encontró un archivo con el precio de cada producto. Agrega el inventario o el catálogo de artículos con su precio de venta.",
+        [
+          `${count(unpriced.length, "línea quedó", "líneas quedaron")} sin precio, en ${count(unpricedProducts.size, "producto distinto", "productos distintos")}.`,
+        ],
+      );
+    }
+
+    warnings.push(
+      `${count(unpriced.length, "línea se descartó", "líneas se descartaron")} porque ni el archivo de ventas ni el de inventario traían el precio de ${count(unpricedProducts.size, "producto", "productos")}.`,
+    );
+  }
+
+  if (pricedFromReference > 0) {
+    notes.push(
+      `${count(pricedFromReference, "línea de venta no traía", "líneas de venta no traían")} precio: se tomó el precio de venta del inventario o del catálogo.`,
+    );
   }
 
   const salesCost = averageCostFromSales(salesRows);
@@ -417,13 +474,13 @@ export function ingestFiles(files: SourceFile[], options: IngestOptions = {}): I
 
   if (productsWithoutInventory.length > 0 && inventoryProvided) {
     warnings.push(
-      `${productsWithoutInventory.length} productos con ventas no aparecen en el inventario. Se registraron con existencia cero.`,
+      `${count(productsWithoutInventory.length, "producto con ventas no aparece", "productos con ventas no aparecen")} en el inventario. Se registraron con existencia cero.`,
     );
   }
 
   if (productsWithoutCost.length > 0) {
     warnings.push(
-      `${productsWithoutCost.length} productos no traían costo: se asume margen cero para no reportar ganancias inexistentes.`,
+      `${count(productsWithoutCost.length, "producto no traía costo", "productos no traían costo")}: se asume margen cero para no reportar ganancias inexistentes.`,
     );
   }
 
@@ -451,7 +508,7 @@ export function ingestFiles(files: SourceFile[], options: IngestOptions = {}): I
   const inventoryOnly = inventory.filter((row) => !soldProducts.has(row.product_id));
   if (inventoryOnly.length > 0) {
     notes.push(
-      `${inventoryOnly.length} productos del inventario no registraron ventas en el período. Se revisan como inventario sin rotación.`,
+      `${count(inventoryOnly.length, "producto del inventario no registró", "productos del inventario no registraron")} ventas en el período. Se revisan como inventario sin rotación.`,
     );
   }
 

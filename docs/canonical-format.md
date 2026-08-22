@@ -1,4 +1,4 @@
-# Entrada de datos — versión 0.4
+# Entrada de datos — versión 0.5
 
 Ya no hace falta transformar la exportación del sistema a un formato fijo. La plataforma lee el archivo como venga y explica cómo lo interpretó.
 
@@ -38,6 +38,62 @@ Primero se compara el nombre del encabezado con un diccionario de equivalencias.
 | `lead_time_days` | dias de reposicion, tiempo de entrega, lead time, plazo de entrega |
 
 Se ignoran acentos, mayúsculas, guiones y espacios: `FC_CODIGO`, `fc codigo` y `Fc-Código` se tratan igual.
+
+## Exportaciones de a2
+
+a2 Básico y varios administrativos parecidos exportan los campos tal como se
+llaman en su base de datos: con un prefijo que indica el tipo de dato y la
+descripción abreviada. La plataforma los lee sin configuración.
+
+| Columna del archivo | Se interpreta como |
+|---|---|
+| `c_CodArt`, `c_Codigo` | Código de producto |
+| `c_Descri` | Nombre del producto |
+| `d_Fecha` | Fecha de venta |
+| `n_Cantidad` | Cantidad vendida |
+| `n_Precio`, `n_Precio1` | Precio unitario |
+| `n_CostoAct` | Costo unitario |
+| `n_Existen` | Existencia actual |
+| `n_DiasRep` | Días de reposición |
+| `c_NumeroD` | Documento de venta |
+| `c_CodClie` | Cliente |
+| `c_Deposito` | Bodega o sucursal |
+| `c_TipoDoc`, `c_Tipo` | Tipo de documento |
+
+El prefijo de una sola letra seguido de guion bajo (`c_`, `n_`, `d_`, `f_`) se
+ignora al comparar el nombre. Un nombre legítimo como `id_producto` no se toca,
+porque el prefijo tiene dos letras.
+
+### Tipo de documento
+
+Cuando la exportación trae la columna del tipo de documento, cada línea se
+interpreta según lo que realmente representa:
+
+| Valor | Qué se hace |
+|---|---|
+| `FAC`, `S`, factura, salida, nota de entrega, contado, crédito | Cuenta como venta |
+| `N/C`, `DEV`, nota de crédito, devolución | Resta de las unidades vendidas |
+| `E`, compra, entrada, cargo | Se descarta: es una entrada de almacén, no una venta |
+| `PRE`, `COT`, presupuesto, cotización, pedido, anulado | Se descarta: nunca fue una venta cobrada |
+
+Sin esta lectura una nota de crédito se sumaría como venta y un presupuesto
+inventaría ventas que no ocurrieron.
+
+La columna solo se usa si sus valores se reconocen de verdad. Si dice `LIMPIEZA`
+y `ABARROTES`, se deja sin usar y no se descarta ninguna línea: "tipo" también
+puede ser el tipo de producto.
+
+Una devolución queda siempre como cantidad negativa a precio positivo, venga el
+archivo con la cantidad en negativo, con el importe en negativo o en positivo
+con el tipo `N/C`.
+
+### Movimientos de almacén
+
+Una exportación de movimientos registra qué salió y a qué costo, pero no el
+precio de venta: ese vive en el maestro de artículos. Si cargas el movimiento
+junto al inventario o al catálogo, el precio se toma de ahí y se informa cuántas
+líneas se completaron así. Si no aparece en ningún archivo, esas líneas se
+descartan con el motivo explícito.
 
 Cuando el nombre no dice nada, se decide por el contenido de la columna:
 

@@ -21,6 +21,7 @@ import type {
   SalesTimeline,
   TimelinePoint,
 } from "./types.js";
+import { maxOf, minOf } from "./numbers.js";
 
 const TOP_N = 6;
 const EXCESS_COVERAGE_DAYS = 90;
@@ -330,7 +331,7 @@ export function buildTimeline(sales: SaleRow[], datesDetected: boolean): SalesTi
     return { granularity: "day", granularityLabel: "", points: [] };
   }
 
-  const spanDays = (Math.max(...times) - Math.min(...times)) / 86_400_000;
+  const spanDays = (maxOf(times) - minOf(times)) / 86_400_000;
   const granularity: SalesTimeline["granularity"] =
     spanDays > 420 ? "month" : spanDays > 75 ? "week" : "day";
   const granularityLabel =

@@ -475,9 +475,21 @@ ul.warnings {
 }
 
 .loading {
+  display: grid;
+  gap: 6px;
   margin-top: 18px;
-  color: var(--ink-muted);
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-soft);
   font-weight: 650;
+}
+
+.loading small {
+  color: var(--ink-muted);
+  font-weight: 400;
+  line-height: 1.5;
 }
 
 /* -------------------------------------------------------------------- pestañas */

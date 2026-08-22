@@ -71,6 +71,29 @@ También reconoce exportaciones de varias tablas relacionadas: si cargas ventas,
 existencias y catálogo por separado, identifica el papel de cada una y las cruza
 por el código de producto.
 
+### Exportaciones de a2
+
+Los archivos de a2 Básico se leen sin configurar nada. La plataforma reconoce sus
+nombres de columna tal como salen de la base de datos —`c_CodArt`, `c_Descri`,
+`d_Fecha`, `n_Cantidad`, `n_Precio`, `n_CostoAct`, `n_Existen`, `n_DiasRep`— y
+entiende la columna del tipo de documento:
+
+| Tipo de línea | Qué hace |
+|---|---|
+| Factura, salida, nota de entrega | Cuenta como venta |
+| Nota de crédito o devolución | Resta de las unidades vendidas |
+| Compra o entrada de almacén | Se descarta: no es una venta |
+| Presupuesto, cotización, pedido o anulado | Se descarta: nunca fue una venta cobrada |
+
+Si exportas los movimientos de almacén, que traen costo pero no precio de venta,
+cárgalos junto al maestro de artículos: el precio se toma de ahí.
+
+Todo esto está construido sobre la convención de nombres de a2. Cuando tengas un
+export real a la mano, cárgalo y revisa la pestaña **Tus datos**: ahí se ve
+columna por columna cómo se interpretó, y si algo no calza se ajusta el
+diccionario. Los otros formatos siguen funcionando igual: nada de esto es
+exclusivo de a2.
+
 La lectura resuelve por su cuenta:
 
 - Codificación UTF-8, UTF-16 o Windows-1252 (acentos y ñ).
@@ -147,12 +170,35 @@ archivos. En `sample-data` hay ejemplos desordenados a propósito:
 - `inventario_sistema.xlsx`: hoja de Excel.
 - `inventario_sistema.json`: el mismo inventario en JSON con claves en español.
 - `sales.csv` e `inventory.csv`: formato canónico.
+- `a2_ventas.csv`, `a2_inventario.csv` y `a2_movimientos.csv`: la convención de
+  nombres de a2, con notas de crédito, presupuestos y entradas de almacén
+  mezcladas a propósito.
 
 Regenerar los ejemplos:
 
 ```bash
 python sample-data/generate_demo.py
 ```
+
+## Archivos grandes
+
+En local no aplica el límite de 4.5 MB de Vercel: el tope lo pone la propia API,
+en 25 MB por archivo y hasta 12 archivos por análisis. Medido en una máquina de
+escritorio con exportaciones con la forma de a2:
+
+| Volumen | Tiempo | Pronóstico |
+|---|---|---|
+| 30.000 líneas · 400 productos | 25 s | Modelo entrenado |
+| 60.000 líneas · 1.200 productos | 30 s | Modelo entrenado |
+| 125.000 líneas · 4.001 productos | 94 s | Promedio del período |
+
+Lo que más pesa es la cantidad de productos distintos, no la cantidad de líneas.
+
+El pronóstico tiene un presupuesto de tiempo que crece con el volumen —30
+segundos más uno por cada 2.000 líneas, con tope de 120— y al agotarse el
+análisis se completa igual con el promedio de ventas del período. La pestaña
+**Tus datos** dice cuál de los dos se usó y por qué; nunca se queda sin
+responder.
 
 ## API
 
@@ -225,9 +271,15 @@ esa dirección.
 
 Límites del entorno en línea:
 
-- El plan gratuito de Vercel acepta cargas de hasta 4.5 MB por solicitud. La
-  interfaz avisa antes de intentarlo; para archivos más grandes conviene usar la
-  instalación local.
+- Vercel corta las solicitudes a una función serverless en 4.5 MB. Es un límite
+  de la plataforma, igual en todos los planes: no se arregla pagando. La interfaz
+  avisa antes de intentarlo.
+
+  En una exportación de ventas típica cada línea pesa unos 80 bytes, así que en
+  4.5 MB entran alrededor de 58.000 líneas. Guardar el archivo como `.xlsx` en
+  vez de CSV lo reduce cerca de un 30% (unas 83.000 líneas). Para más que eso,
+  exportar por trimestre o correr la plataforma en local, donde el límite es de
+  25 MB por archivo y hasta 12 archivos.
 - La función tiene 60 segundos de tiempo máximo, suficiente para los cálculos.
 
 ## Advertencias financieras

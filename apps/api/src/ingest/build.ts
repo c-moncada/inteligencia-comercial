@@ -8,6 +8,7 @@
 
 import type { InventoryRow, SaleRow } from "../types.js";
 import type { CanonicalField } from "./fields.js";
+import { classifyDocument } from "./fields.js";
 import type { ColumnMapping, TableMapping } from "./mapping.js";
 import type { RawTable } from "./table.js";
 import { normalizeText, parseDate, parseNumber, slug } from "./values.js";
@@ -88,6 +89,7 @@ export function buildSalesRows(
 
   const dateColumn = mapping.byField.get("sale_date");
   const dateStyle = dateColumn ? mapping.profiles[dateColumn.columnIndex].dateStyle : "iso";
+  const documentColumn = mapping.byField.get("document_type");
   const rows: SaleRow[] = [];
   let discarded = 0;
 
@@ -97,6 +99,33 @@ export function buildSalesRows(
       discarded += 1;
       issues.add("info", "Filas sin producto identificable (totales, separadores o vacías).");
       return;
+    }
+
+    // Una nota de crédito suma venta si se lee como factura, y un presupuesto
+    // inventa una venta que nunca ocurrió. El tipo de documento lo resuelve.
+    let isReturn = false;
+    if (documentColumn) {
+      const kind = classifyDocument(cell(row, "document_type"));
+
+      if (kind === "not_a_sale") {
+        discarded += 1;
+        issues.add(
+          "info",
+          "Filas descartadas por no ser ventas: presupuestos, cotizaciones, pedidos o documentos anulados.",
+        );
+        return;
+      }
+
+      if (kind === "entry") {
+        discarded += 1;
+        issues.add(
+          "info",
+          "Filas descartadas por ser compras o entradas de almacén, no salidas por venta.",
+        );
+        return;
+      }
+
+      isReturn = kind === "return";
     }
 
     let saleDate = options.fallbackDate;
@@ -137,9 +166,14 @@ export function buildSalesRows(
     }
 
     if (unitPrice === null) {
-      discarded += 1;
-      issues.add("warning", "Filas descartadas porque no se encontró precio ni importe.");
-      return;
+      // Un movimiento de almacén trae cantidad y costo, pero no precio de venta.
+      // Se deja pendiente para tomarlo del inventario o del catálogo; si no
+      // aparece en ningún archivo, la fila se descarta después y se informa.
+      unitPrice = Number.NaN;
+      issues.add(
+        "info",
+        "Filas sin precio de venta: el precio se buscó en el inventario o el catálogo.",
+      );
     }
 
     if (unitCost === null && lineCost !== null && quantity !== 0) {
@@ -153,6 +187,20 @@ export function buildSalesRows(
         unitCost = unitPrice * (1 - ratio);
         issues.add("info", "Costo unitario reconstruido con el margen informado.");
       }
+    }
+
+    // Una devolución debe quedar como cantidad negativa a precio positivo: así
+    // resta de la venta sin ensuciar el precio unitario del producto.
+    if (unitPrice < 0) {
+      unitPrice = -unitPrice;
+      quantity = -quantity;
+    }
+    if (unitCost !== null && unitCost < 0) unitCost = -unitCost;
+
+    // Si el archivo ya trae la devolución en negativo, no se vuelve a invertir.
+    if (isReturn && quantity > 0) {
+      quantity = -quantity;
+      issues.add("info", "Devoluciones y notas de crédito restadas de las unidades vendidas.");
     }
 
     const saleId = cell(row, "sale_id") || `${table.sheet ?? table.source}-${index + 1}`;
@@ -287,7 +335,7 @@ export function buildInventoryRows(
 
   if (missingLeadTime > 0) {
     notes.push(
-      `${missingLeadTime} productos no traían días de reposición: se asumieron ${options.defaultLeadTimeDays} días.`,
+      `${missingLeadTime === 1 ? "1 fila no traía" : `${missingLeadTime} filas no traían`} días de reposición: se asumieron ${options.defaultLeadTimeDays} días.`,
     );
   }
 

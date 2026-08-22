@@ -4,6 +4,9 @@ Además del formato canónico (sales.csv e inventory.csv), escribe versiones
 "sucias" equivalentes a lo que exporta un sistema administrativo real, para
 probar la lectura automática de archivos: punto y coma, fechas dd/mm/aaaa,
 montos con símbolo de moneda, encabezados en español, JSON y Excel.
+
+También escribe una versión con la convención de nombres de a2 (prefijos de
+tipo, descripciones abreviadas y columna de tipo de documento).
 """
 
 from __future__ import annotations
@@ -239,11 +242,137 @@ def write_inventory_xlsx() -> None:
         book.writestr("xl/worksheets/sheet1.xml", sheet)
 
 
+def _a2_number(value: float) -> str:
+    """Miles con punto y decimales con coma, como sale de un a2 en espanol."""
+    text = f"{value:,.2f}"
+    return text.replace(",", "|").replace(".", ",").replace("|", ".")
+
+
+def write_a2_sales(rows: list[dict[str, object]]) -> None:
+    """Renglones de factura con la convención de nombres de a2.
+
+    Los campos llevan el prefijo de tipo de la base de datos (c_, n_, d_), la
+    descripción viene abreviada como `c_Descri` y el tipo de documento distingue
+    facturas, notas de crédito y presupuestos.
+    """
+    lines = [
+        "c_TipoDoc;c_NumeroD;d_Fecha;c_CodClie;c_CodArt;c_Descri;n_Cantidad;n_Precio;n_CostoAct"
+    ]
+
+    for index, row in enumerate(rows):
+        sale_date = date.fromisoformat(str(row["sale_date"]))
+
+        # Una de cada 60 líneas se devuelve, y una de cada 97 quedó en
+        # presupuesto: ninguna de las dos es una venta cobrada.
+        if index % 97 == 0:
+            document = "PRE"
+        elif index % 60 == 0:
+            document = "N/C"
+        else:
+            document = "FAC"
+
+        lines.append(
+            ";".join(
+                [
+                    document,
+                    f"{index + 1:06d}",
+                    sale_date.strftime("%d/%m/%Y"),
+                    str(row["customer_id"]),
+                    str(row["product_id"]),
+                    str(row["product_name"]).upper(),
+                    str(row["quantity"]),
+                    _a2_number(float(row["unit_price"])),
+                    _a2_number(float(row["unit_cost"])),
+                ]
+            )
+        )
+
+    (ROOT / "a2_ventas.csv").write_text(
+        "\n".join(lines), encoding="cp1252", newline="\n"
+    )
+
+
+def write_a2_inventory() -> None:
+    """Maestro de artículos con existencia, en la misma convención."""
+    lines = ["c_CodArt;c_Descri;n_Existen;n_CostoAct;n_Precio1;c_Deposito;n_DiasRep"]
+
+    for product_id, name, stock, cost, lead_time in INVENTORY:
+        price = next(
+            (info[1] for code, info in PRODUCTS.items() if code == product_id),
+            round(cost * 1.35, 2),
+        )
+        lines.append(
+            ";".join(
+                [
+                    product_id,
+                    name.upper(),
+                    str(stock),
+                    _a2_number(float(cost)),
+                    _a2_number(float(price)),
+                    "PRINCIPAL",
+                    str(lead_time),
+                ]
+            )
+        )
+
+    (ROOT / "a2_inventario.csv").write_text(
+        "\n".join(lines), encoding="cp1252", newline="\n"
+    )
+
+
+def write_a2_movements(rows: list[dict[str, object]]) -> None:
+    """Movimientos de almacén: entradas por compra y salidas por venta."""
+    lines = ["d_Fecha;c_Tipo;c_CodArt;c_Descri;n_Cantidad;n_Costo;c_Deposito"]
+
+    for index, row in enumerate(rows):
+        sale_date = date.fromisoformat(str(row["sale_date"]))
+        lines.append(
+            ";".join(
+                [
+                    sale_date.strftime("%d/%m/%Y"),
+                    "S",
+                    str(row["product_id"]),
+                    str(row["product_name"]).upper(),
+                    str(row["quantity"]),
+                    _a2_number(float(row["unit_cost"])),
+                    "PRINCIPAL",
+                ]
+            )
+        )
+
+        # Reposiciones del proveedor cada tanto: entran al almacén, no son venta.
+        if index % 45 == 0:
+            lines.append(
+                ";".join(
+                    [
+                        sale_date.strftime("%d/%m/%Y"),
+                        "E",
+                        str(row["product_id"]),
+                        str(row["product_name"]).upper(),
+                        "50",
+                        _a2_number(float(row["unit_cost"])),
+                        "PRINCIPAL",
+                    ]
+                )
+            )
+
+    (ROOT / "a2_movimientos.csv").write_text(
+        "\n".join(lines), encoding="cp1252", newline="\n"
+    )
+
+
 if __name__ == "__main__":
     generated = build_rows()
     write_canonical(generated)
     write_messy_sales(generated)
     write_inventory_json()
     write_inventory_xlsx()
+    write_a2_sales(generated)
+    write_a2_inventory()
+    write_a2_movements(generated)
     print(f"Generadas {len(generated)} filas desde {START} hasta {END}.")
-    print("Archivos: sales.csv, inventory.csv, ventas_sistema.csv, inventario_sistema.json, inventario_sistema.xlsx")
+    print(
+        "Archivos: sales.csv, inventory.csv, ventas_sistema.csv, "
+        "inventario_sistema.json, inventario_sistema.xlsx, "
+        "a2_ventas.csv, a2_inventario.csv, a2_movimientos.csv"
+    )

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AnalysisResult, RankedProduct } from "./types";
 import { longDate, money } from "./lib/format";
 import { ActionPlan } from "./components/ActionPlan";
@@ -63,6 +63,34 @@ function Landing({ onDemo, loading }: { onDemo: () => void; loading: boolean }) 
         .
       </p>
     </section>
+  );
+}
+
+/**
+ * Aviso mientras se calcula.
+ *
+ * Un archivo de un año entero puede tardar más de un minuto: casi todo se va en
+ * entrenar el pronóstico. Sin decirlo, la espera parece que algo se colgó.
+ */
+function LoadingNotice() {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds((current) => current + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <p className="loading">
+      Leyendo tus archivos y calculando…
+      {seconds >= 8 ? (
+        <small>
+          Llevas {seconds} segundos. Con exportaciones de varios meses el pronóstico puede tardar
+          más de un minuto; si no alcanza a entrenarse, el análisis se completa igual con el
+          promedio de ventas y te lo dice en la pestaña <b>Tus datos</b>.
+        </small>
+      ) : null}
+    </p>
   );
 }
 
@@ -222,7 +250,7 @@ function App() {
           </div>
         ) : null}
 
-        {loading ? <p className="loading">Leyendo tus archivos y calculando…</p> : null}
+        {loading ? <LoadingNotice /> : null}
 
         {!result && !loading ? <Landing onDemo={loadDemo} loading={loading} /> : null}
 

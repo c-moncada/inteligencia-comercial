@@ -2,7 +2,8 @@ import { useRef, useState } from "react";
 import { formatBytes } from "../lib/format";
 
 /**
- * En Vercel el plan gratuito corta las solicitudes que pasan de 4.5 MB, así que
+ * Vercel corta en 4.5 MB el cuerpo de cualquier solicitud a una función
+ * serverless. Es un límite de la plataforma, no del plan contratado, así que
  * conviene avisar antes de intentar la carga y no después del error.
  */
 const HOSTED_UPLOAD_LIMIT = 4.5 * 1024 * 1024;
@@ -95,9 +96,10 @@ export function UploadPanel({
 
       {tooLargeForHosting ? (
         <p className="warnings">
-          Los archivos suman {formatBytes(totalBytes)}. La versión en línea acepta hasta 4.5 MB por
-          análisis: divide la exportación por mes o corre la plataforma en tu computadora para
-          archivos grandes.
+          Los archivos suman {formatBytes(totalBytes)}. La versión en línea acepta hasta 4.5 MB
+          por análisis. Guardar la exportación como <b>.xlsx</b> en vez de CSV la reduce alrededor
+          de un 30%; si con eso no alcanza, exporta por trimestre o corre la plataforma en tu
+          computadora, donde el límite es de 25 MB por archivo.
         </p>
       ) : null}
 

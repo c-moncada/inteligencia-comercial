@@ -16,6 +16,26 @@ const configuredUrl = process.env.ML_SERVICE_URL?.trim();
 const ML_SERVICE_URL =
   configuredUrl ?? (process.env.VERCEL ? "" : "http://localhost:8000");
 
+/**
+ * Cuánto se espera al modelo antes de resolver con reglas.
+ *
+ * Entrenar sobre miles de productos toma minutos, y nadie se queda mirando una
+ * pantalla en blanco tanto rato. Se da más tiempo cuando hay más historial,
+ * pero con un tope: pasado eso se responde con el promedio de ventas y se
+ * explica por qué, en vez de dejar la solicitud colgada.
+ */
+const BASE_TIMEOUT_MS = 30_000;
+const MAX_TIMEOUT_MS = 120_000;
+
+function timeoutFor(rows: number): number {
+  return Math.min(MAX_TIMEOUT_MS, BASE_TIMEOUT_MS + Math.floor(rows / 2_000) * 1_000);
+}
+
+function isTimeout(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return error.name === "TimeoutError" || /timeout|abort/i.test(error.message);
+}
+
 function withoutModel(message: string): DemandForecastResult {
   return {
     status: "unavailable",
@@ -48,7 +68,7 @@ export async function requestDemandForecast(
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ sales, inventory }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(timeoutFor(sales.length)),
     });
 
     const body = (await response.json()) as DemandForecastResult & {
@@ -61,6 +81,15 @@ export async function requestDemandForecast(
 
     return body;
   } catch (error) {
+    // Que se acabe el tiempo no es lo mismo que no tener el servicio: decirlo
+    // igual mandaría a revisar una instalación que está perfectamente bien.
+    if (isTimeout(error)) {
+      const seconds = Math.round(timeoutFor(sales.length) / 1000);
+      return withoutModel(
+        `El modelo no terminó de entrenarse dentro de los ${seconds} segundos disponibles: son ${sales.length.toLocaleString("es-HN")} líneas de venta. La demanda se estimó con el promedio del período. Para usar el modelo, analiza un período más corto o menos productos a la vez.`,
+      );
+    }
+
     const message = error instanceof Error ? error.message : "Error desconocido.";
     return withoutModel(
       `El servicio de machine learning no está disponible (${message}). Las decisiones se calcularon con reglas de inventario sobre el historial cargado.`,

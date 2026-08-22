@@ -7,7 +7,8 @@
  */
 
 import type { CanonicalField, FieldKind } from "./fields.js";
-import { ALIAS_INDEX, FIELD_DEFINITIONS, FIELDS_BY_NAME } from "./fields.js";
+import { ALIAS_INDEX, FIELD_DEFINITIONS, FIELDS_BY_NAME, classifyDocument } from "./fields.js";
+import { maxOf } from "../numbers.js";
 import type { RawTable } from "./table.js";
 import { columnValues } from "./table.js";
 import type { DateStyle, NumberStyle } from "./values.js";
@@ -20,6 +21,7 @@ import {
   parseNumber,
   similarity,
   slug,
+  stripTypePrefix,
   tokens,
 } from "./values.js";
 
@@ -38,6 +40,8 @@ export interface ColumnProfile {
   index: number;
   header: string;
   headerSlug: string;
+  /** El mismo nombre sin el prefijo de tipo: `c_Codigo` se compara como `codigo`. */
+  headerBase: string;
   values: string[];
   filledRatio: number;
   numberRatio: number;
@@ -111,6 +115,7 @@ export function profileColumns(table: RawTable): ColumnProfile[] {
       index,
       header,
       headerSlug: slug(header),
+      headerBase: slug(stripTypePrefix(header)),
       values,
       filledRatio: values.length === 0 ? 0 : filled.length / values.length,
       numberRatio: filled.length === 0 ? 0 : numbers.length / filled.length,
@@ -120,7 +125,7 @@ export function profileColumns(table: RawTable): ColumnProfile[] {
       uniqueRatio: filled.length === 0 ? 0 : unique.size / filled.length,
       wordRatio: filled.length === 0 ? 0 : words / filled.length,
       median: median(numbers),
-      maximum: numbers.length === 0 ? null : Math.max(...numbers),
+      maximum: numbers.length === 0 ? null : maxOf(numbers),
       rowIndexLike: isRowIndex(numbers, filled.length),
       numberStyle,
       dateStyle,
@@ -128,11 +133,22 @@ export function profileColumns(table: RawTable): ColumnProfile[] {
   });
 }
 
-function aliasScore(headerSlug: string, headerTokens: string[], field: CanonicalField): number {
+function aliasScore(
+  headerSlug: string,
+  headerBase: string,
+  headerTokens: string[],
+  field: CanonicalField,
+): number {
   if (!headerSlug) return 0;
 
   const direct = ALIAS_INDEX.get(headerSlug);
   if (direct === field) return 1;
+
+  // `c_Codigo`, `n_Cantidad`, `d_Fecha`: el prefijo indica el tipo de dato en la
+  // base de datos de origen y no dice nada sobre el contenido.
+  if (headerBase && headerBase !== headerSlug && ALIAS_INDEX.get(headerBase) === field) {
+    return 0.97;
+  }
 
   const definition = FIELDS_BY_NAME.get(field);
   if (!definition) return 0;
@@ -143,6 +159,7 @@ function aliasScore(headerSlug: string, headerTokens: string[], field: Canonical
     if (!aliasSlug) continue;
 
     if (aliasSlug === headerSlug) return 1;
+    if (headerBase && aliasSlug === headerBase) return 0.97;
 
     if (aliasSlug.length >= 5 && headerSlug.includes(aliasSlug)) {
       best = Math.max(best, 0.9 - Math.min(0.15, (headerSlug.length - aliasSlug.length) * 0.01));
@@ -203,7 +220,12 @@ function assignByName(profiles: ColumnProfile[]): Map<CanonicalField, ColumnMapp
   for (const profile of profiles) {
     const headerTokens = tokens(profile.header);
     for (const definition of FIELD_DEFINITIONS) {
-      const byName = aliasScore(profile.headerSlug, headerTokens, definition.field);
+      const byName = aliasScore(
+        profile.headerSlug,
+        profile.headerBase,
+        headerTokens,
+        definition.field,
+      );
       if (byName < 0.6) continue;
 
       const fit = kindFit(profile, definition.kind);
@@ -242,7 +264,11 @@ function assignByName(profiles: ColumnProfile[]): Map<CanonicalField, ColumnMapp
       header: profile.header,
       columnIndex: candidate.columnIndex,
       confidence: Number(candidate.score.toFixed(2)),
-      method: candidate.aliasScore >= 0.99 ? "nombre" : "nombre similar",
+      method: candidate.aliasScore >= 0.97 ? "nombre" : "nombre similar",
+      note:
+        candidate.aliasScore >= 0.97 && candidate.aliasScore < 1
+          ? `Se ignoró el prefijo "${profile.header.slice(0, 2)}", que solo marca el tipo de dato en el sistema de origen.`
+          : undefined,
     });
     usedColumns.add(candidate.columnIndex);
   }
@@ -502,7 +528,10 @@ function reinterpretQuantityAsStock(
   const inventorySignals =
     byField.has("min_stock") || byField.has("expiry_date") || byField.has("lead_time_days");
   const salesSignals =
-    byField.has("sale_id") || byField.has("customer_id") || byField.has("line_total");
+    byField.has("sale_id") ||
+    byField.has("customer_id") ||
+    byField.has("line_total") ||
+    byField.has("document_type");
   if (!inventorySignals || salesSignals) return;
 
   byField.set("current_stock", {
@@ -515,6 +544,49 @@ function reinterpretQuantityAsStock(
   notes.push(
     `La columna "${quantity.header}" se interpretó como existencia actual, no como unidades vendidas, porque la tabla es de inventario.`,
   );
+}
+
+/**
+ * "Tipo" es una palabra demasiado común: puede ser el tipo de documento o el
+ * tipo de producto. Solo se acepta como tipo de documento si los valores de la
+ * columna se reconocen de verdad; si no, se suelta y la columna queda sin usar
+ * en vez de descartar ventas buenas por una lectura equivocada.
+ */
+function validateDocumentType(
+  profiles: ColumnProfile[],
+  byField: Map<CanonicalField, ColumnMapping>,
+  notes: string[],
+): void {
+  const mapping = byField.get("document_type");
+  if (!mapping) return;
+
+  const profile = profiles[mapping.columnIndex];
+  const filled = profile.values.filter((value) => value.trim() !== "");
+
+  if (filled.length === 0) {
+    byField.delete("document_type");
+    return;
+  }
+
+  const recognized = filled.filter((value) => classifyDocument(value) !== "unknown").length;
+  const ratio = recognized / filled.length;
+
+  if (ratio < 0.6) {
+    byField.delete("document_type");
+    notes.push(
+      `La columna "${mapping.header}" no se usó como tipo de documento: sus valores no corresponden a facturas, devoluciones ni movimientos conocidos.`,
+    );
+    return;
+  }
+
+  const kinds = new Set(filled.map((value) => classifyDocument(value)));
+  const special = [...kinds].filter((kind) => kind === "return" || kind === "entry" || kind === "not_a_sale");
+
+  if (special.length > 0) {
+    notes.push(
+      `La columna "${mapping.header}" indica el tipo de cada documento: las devoluciones restan de la venta y los documentos que no son ventas se descartan.`,
+    );
+  }
 }
 
 function detectRole(byField: Map<CanonicalField, ColumnMapping>): {
@@ -559,6 +631,7 @@ export function mapTable(table: RawTable): TableMapping {
   assignByContent(profiles, byField, notes);
   refineProductId(profiles, byField, notes);
   refine(profiles, byField, notes);
+  validateDocumentType(profiles, byField, notes);
   reinterpretQuantityAsStock(byField, notes);
 
   const { role, undated } = detectRole(byField);

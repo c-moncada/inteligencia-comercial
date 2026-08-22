@@ -47,6 +47,18 @@ export function slug(value: string): string {
     .replace(/[^a-z0-9]+/g, "");
 }
 
+/**
+ * Quita el prefijo de tipo que arrastran los sistemas que exportan directo de
+ * su base de datos: `c_Codigo`, `n_Cantidad`, `d_Fecha`. Es la convención de a2
+ * y de varios administrativos parecidos.
+ *
+ * Solo se quita una letra suelta seguida de guion bajo, para no romper nombres
+ * legítimos como `id_producto`.
+ */
+export function stripTypePrefix(header: string): string {
+  return header.replace(/^\s*[A-Za-z]_(?=[A-Za-z0-9])/, "");
+}
+
 /** Igual que slug pero conservando la separación entre palabras. */
 export function tokens(value: string): string[] {
   return value

@@ -267,7 +267,7 @@ test("asume margen cero cuando ningún archivo trae el costo", () => {
 
   assert.equal(outcome.productsWithoutCost.length, 1);
   assert.equal(outcome.sales[0].unit_cost, outcome.sales[0].unit_price);
-  assert.ok(outcome.report.warnings.some((warning) => warning.includes("no traían costo")));
+  assert.ok(outcome.report.warnings.some((warning) => /no traían? costo/.test(warning)));
 });
 
 test("corrige el orden cuando el costo aparece antes que el precio", () => {

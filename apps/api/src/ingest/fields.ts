@@ -16,6 +16,7 @@ export type CanonicalField =
   | "line_total"
   | "line_cost_total"
   | "sale_id"
+  | "document_type"
   | "customer_id"
   | "current_stock"
   | "lead_time_days"
@@ -49,6 +50,10 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
       "clave", "clave producto", "upc", "ean", "codigo de barras", "codigo barras", "barcode",
       "material", "codigo interno", "no articulo", "numero articulo", "codigo sap",
       "codigo del producto", "cod", "id item", "part number", "partnumber",
+      // Nombres cortos típicos de a2 y de otros administrativos que exportan
+      // directamente los campos de su base de datos.
+      "codart", "cod art", "codigoart", "codart1", "codprincipal", "codigo principal",
+      "reng codigo", "renglon codigo", "art", "articulo codigo", "codbarra",
     ],
   },
   {
@@ -62,6 +67,8 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
       "descripcion articulo", "product name", "productname", "product", "description",
       "denominacion", "concepto", "material description", "nombre articulo", "item",
       "descripcion item", "producto nombre",
+      "descri", "descrip", "descripcio", "descripcion1", "nombre art",
+      "descripcion larga", "descripcion corta", "art descripcion",
     ],
   },
   {
@@ -75,6 +82,8 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
       "fecha movimiento", "fecha operacion", "fecha registro", "sale date", "saledate",
       "invoice date", "order date", "date", "dia", "emision", "periodo", "fec", "fec emision",
       "fecha hora", "timestamp", "created at", "fecha transaccion",
+      "fechad", "fecha d", "fechadoc", "fecha doc", "fecha del documento",
+      "fecha mov", "fechamov",
     ],
   },
   {
@@ -100,6 +109,8 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
       "qty", "quantity", "cantidad facturada", "piezas", "pzas", "salida", "salidas",
       "cantidad salida", "unid", "und", "vendido", "vendidos", "quantity sold", "volumen",
       "cantidad unidades", "num unidades",
+      "cantd", "cant desp", "cantidad despachada", "despachado", "cantidad1",
+      "cant fact", "unidades despachadas",
     ],
   },
   {
@@ -112,6 +123,8 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
       "p unitario", "punitario", "unit price", "unitprice", "price", "pvp", "valor unitario",
       "precio neto", "precio lista", "importe unitario", "precio publico", "precio final",
       "sale price", "selling price",
+      "preciod", "precio1", "precio 1", "preciounit", "precio unitario1",
+      "precio detal", "precio mayor",
     ],
   },
   {
@@ -125,6 +138,8 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
       "precio costo", "costo actual", "costo estandar", "valor costo", "average cost",
       "costo prom", "precio compra", "precio de compra", "valor compra", "purchase price",
       "costo adquisicion", "precio proveedor",
+      "costoact", "costo act", "ultimo costo", "costo ult", "costoant",
+      "costo anterior", "costo prom1", "costo1",
     ],
   },
   {
@@ -158,6 +173,29 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
       "no documento", "num documento", "folio", "ticket", "invoice", "invoice id",
       "invoice number", "sale id", "saleid", "comprobante", "correlativo", "orden",
       "pedido", "transaccion", "movimiento", "fc codigo", "id venta", "boleta",
+      "numerod", "numero d", "numero documento", "nro doc", "num doc", "ndoc",
+      "control", "numero control", "nro control",
+    ],
+  },
+  {
+    /**
+     * Tipo de documento o de movimiento.
+     *
+     * Sin él una nota de crédito se suma como venta y un presupuesto inventa
+     * ventas que nunca ocurrieron. a2 y los administrativos parecidos siempre
+     * traen esta columna en los renglones de factura y en los movimientos de
+     * almacén.
+     */
+    field: "document_type",
+    label: "Tipo de documento",
+    kind: "text",
+    scope: "sales",
+    aliases: [
+      "tipo", "tipo documento", "tipo de documento", "tipodoc", "tipo doc",
+      "tipo comprobante", "clase documento", "clase de documento", "doc tipo",
+      "tipo movimiento", "tipo de movimiento", "tipo mov", "tipomov",
+      "tipo operacion", "tipo transaccion", "naturaleza", "signo",
+      "document type", "movement type", "transaction type",
     ],
   },
   {
@@ -169,6 +207,7 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
       "cliente", "codigo cliente", "cod cliente", "id cliente", "customer", "customer id",
       "customerid", "nit", "rtn", "ruc", "cedula", "razon social", "nombre cliente",
       "client", "cliente id",
+      "codclie", "cod clie", "codcli", "clidesc", "rif", "razon social cliente",
     ],
   },
   {
@@ -182,6 +221,8 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
       "unidades disponibles", "on hand", "onhand", "quantity on hand", "exist",
       "cant existencia", "stock disponible", "saldo inventario", "existencia actual",
       "current stock", "stock on hand",
+      "existen", "existe", "existencia1", "exist actual",
+      "stock1", "saldo final", "existencia final",
     ],
   },
   {
@@ -194,6 +235,7 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
       "tiempo entrega", "tiempo de entrega", "dias entrega", "dias de entrega",
       "plazo entrega", "plazo de entrega", "dias proveedor", "tiempo reposicion",
       "dias espera", "delivery days",
+      "diasrep", "dias rep", "diasreposicion", "dias prov", "tiempo prov",
     ],
   },
   {
@@ -240,7 +282,7 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
     scope: "both",
     aliases: [
       "bodega", "almacen", "sucursal", "tienda", "local", "warehouse", "store", "centro",
-      "punto de venta",
+      "punto de venta", "deposito", "dep", "coddeposito", "cod deposito", "codalmacen",
     ],
   },
 ];
@@ -261,4 +303,85 @@ for (const definition of FIELD_DEFINITIONS) {
 
 export function fieldLabel(field: CanonicalField): string {
   return FIELDS_BY_NAME.get(field)?.label ?? field;
+}
+
+/**
+ * Qué representa una fila según su tipo de documento.
+ *
+ * - `sale`: factura, salida de almacén, nota de entrega. Suma a la venta.
+ * - `return`: nota de crédito o devolución. Resta de la venta.
+ * - `entry`: compra o entrada de almacén. No es venta y se descarta.
+ * - `not_a_sale`: presupuesto, cotización, pedido o documento anulado.
+ * - `unknown`: no se reconoció; la fila se trata como venta normal.
+ */
+export type DocumentKind = "sale" | "return" | "entry" | "not_a_sale" | "unknown";
+
+/** Códigos cortos, tal como los escriben los sistemas administrativos. */
+const DOCUMENT_CODES: Record<string, DocumentKind> = {
+  fac: "sale", f: "sale", fv: "sale", fact: "sale", facv: "sale", v: "sale",
+  s: "sale", sal: "sale", ne: "sale", tk: "sale", fc: "sale", vta: "sale",
+  nc: "return", ncr: "return", dev: "return", devo: "return", d: "return",
+  e: "entry", ent: "entry", com: "entry", cmp: "entry", c: "entry",
+  pre: "not_a_sale", pres: "not_a_sale", cot: "not_a_sale", ped: "not_a_sale",
+  pd: "not_a_sale", anu: "not_a_sale", nul: "not_a_sale",
+};
+
+/**
+ * Palabras completas. Se revisan por orden: lo más específico primero, porque
+ * "nota de credito" contiene "credito", que por sí solo es una condición de
+ * pago y no una devolución.
+ */
+const DOCUMENT_WORDS: { needle: string; kind: DocumentKind }[] = [
+  { needle: "notadecredito", kind: "return" },
+  { needle: "notacredito", kind: "return" },
+  { needle: "devolucion", kind: "return" },
+  { needle: "devuelto", kind: "return" },
+  { needle: "creditnote", kind: "return" },
+  { needle: "return", kind: "return" },
+
+  { needle: "presupuesto", kind: "not_a_sale" },
+  { needle: "cotizacion", kind: "not_a_sale" },
+  { needle: "proforma", kind: "not_a_sale" },
+  { needle: "pedido", kind: "not_a_sale" },
+  { needle: "ordendecompra", kind: "not_a_sale" },
+  { needle: "anulad", kind: "not_a_sale" },
+  { needle: "borrador", kind: "not_a_sale" },
+  { needle: "quote", kind: "not_a_sale" },
+
+  { needle: "compra", kind: "entry" },
+  { needle: "entrada", kind: "entry" },
+  { needle: "cargo", kind: "entry" },
+  { needle: "recepcion", kind: "entry" },
+  { needle: "ajustepositivo", kind: "entry" },
+  { needle: "purchase", kind: "entry" },
+
+  { needle: "notadeentrega", kind: "sale" },
+  { needle: "notaentrega", kind: "sale" },
+  { needle: "factura", kind: "sale" },
+  { needle: "despacho", kind: "sale" },
+  { needle: "descargo", kind: "sale" },
+  { needle: "salida", kind: "sale" },
+  { needle: "venta", kind: "sale" },
+  { needle: "contado", kind: "sale" },
+  { needle: "credito", kind: "sale" },
+  { needle: "ticket", kind: "sale" },
+  { needle: "invoice", kind: "sale" },
+  { needle: "sale", kind: "sale" },
+];
+
+/** Interpreta el valor de la columna de tipo de documento. */
+export function classifyDocument(value: string): DocumentKind {
+  const key = slug(value);
+  if (!key) return "unknown";
+
+  // Un "-1" o "-" en la columna de signo también marca una devolución.
+  const trimmed = value.trim();
+  if (trimmed === "-1" || trimmed === "-") return "return";
+  if (trimmed === "1" || trimmed === "+") return "sale";
+
+  for (const { needle, kind } of DOCUMENT_WORDS) {
+    if (key.includes(needle)) return kind;
+  }
+
+  return DOCUMENT_CODES[key] ?? "unknown";
 }

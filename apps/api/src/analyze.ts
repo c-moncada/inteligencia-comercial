@@ -5,6 +5,7 @@ import type {
   ProductAnalysis,
   SaleRow,
 } from "./types.js";
+import { maxOf, minOf } from "./numbers.js";
 
 const SAFETY_STOCK_DAYS = 7;
 const EXCESS_COVERAGE_DAYS = 90;
@@ -50,8 +51,8 @@ export function analyzeBusinessData(
   const withoutCost = new Set(options.productsWithoutCost ?? []);
 
   const dates = sales.map((sale) => new Date(sale.sale_date).getTime());
-  const minDate = Math.min(...dates);
-  const maxDate = Math.max(...dates);
+  const minDate = minOf(dates);
+  const maxDate = maxOf(dates);
   const observedDays = Math.max(1, Math.floor((maxDate - minDate) / 86_400_000) + 1);
   const assumedPeriod = options.periodDaysOverride ?? null;
   const periodDays = assumedPeriod ?? observedDays;
@@ -107,7 +108,7 @@ export function analyzeBusinessData(
     const inventoryValue = Math.max(currentStock, 0) * Math.max(inventoryUnitCost, 0);
 
     const lastSale = rows.length > 0
-      ? Math.max(...rows.map((row) => new Date(row.sale_date).getTime()))
+      ? maxOf(rows.map((row) => new Date(row.sale_date).getTime()))
       : null;
     const daysSinceLastSale =
       lastSale === null || assumedPeriod !== null
